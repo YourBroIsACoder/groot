@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "796720189552",
+    "project_id": "groot-nursery-app",
+    "storage_bucket": "groot-nursery-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:796720189552:android:e7498f28aed946f467e4b5",
+        "android_client_info": {
+          "package_name": "com.example.groot"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "796720189552-noboqvauvaej53vrq3me7es8lqnrbbc7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNBmuOW57ZXaE1r1irLflYVZfC2zoHHqY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "796720189552-noboqvauvaej53vrq3me7es8lqnrbbc7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -33,13 +33,13 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Image(
-            painter = painterResource(id = R.drawable.ic_launcher_background), // Make sure you have 'app_logo.png' in res/drawable
+            painter = painterResource(id = R.drawable.logo), // Make sure you have 'app_logo.png' in res/drawable
             contentDescription = "App Logo",
             modifier = Modifier.size(120.dp),
             contentScale = ContentScale.Fit
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Gardenia Nursery", style = MaterialTheme.typography.headlineLarge)
+        Text("Groot Nursery", style = MaterialTheme.typography.headlineLarge)
         Text("Your Green Oasis", style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.height(48.dp))
 

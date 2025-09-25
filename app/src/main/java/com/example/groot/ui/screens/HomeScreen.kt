@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -21,55 +24,72 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.groot.data.Plant
 import com.example.groot.ui.theme.GardeningNurseryTheme
 
-// Sample data - This remains the same.
+// Sample data is defined here for simplicity
 val samplePlants = listOf(
     Plant(1, "Monstera", 25.99, "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=500", "Loves indirect light."),
     Plant(2, "Snake Plant", 19.99, "https://images.unsplash.com/photo-1587334274328-64186a80aeee?w=500", "Almost impossible to kill."),
-    Plant(3, "Pothos", 15.50, "https://images.unsplash.com/photo-1615591039343-96947511a283?w=500", "Great for hanging baskets."),
-    Plant(4, "Fiddle Leaf", 45.00, "https://images.unsplash.com/photo-1581827479532-a5d6f1a307a6?w=500", "Can be a bit dramatic."),
-    Plant(5, "ZZ Plant", 22.00, "https://images.unsplash.com/photo-1632207626027-0366e63c784d?w=500", "Thrives on neglect."),
-    Plant(6, "Spider Plant", 12.99, "https://images.unsplash.com/photo-1594313542113-116554034371?w=500", "Produces baby spiderettes.")
+    Plant(3, "Pothos", 15.50, "https://m.media-amazon.com/images/I/51OkJOxkE7L._UF1000,1000_QL80_.jpg", "Great for hanging baskets."),
+    Plant(4, "Fiddle Leaf", 45.00, "https://m.media-amazon.com/images/I/51fehIGF48L._UF1000,1000_QL80_.jpg", "Can be a bit dramatic."),
+    Plant(5, "ZZ Plant", 22.00, "https://rukminim2.flixcart.com/image/704/844/xif0q/plant-sapling/v/h/a/perennial-yes-no-money-plant-sn11m1a-1-pot-sayantika-nursery-original-imagc8zhybfmbz2g.jpeg?q=90&crop=false", "Thrives on neglect."),
+    Plant(6, "Spider Plant", 12.99, "https://m.media-amazon.com/images/I/51CCyxsXSPL._UF1000,1000_QL80_.jpg", "Produces baby spiderettes.")
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-
+// NOTE: The onChatClick parameter is removed as requested
 fun HomeScreen(onPlantClick: (Int) -> Unit) {
+    // State for the search query and the filtered list
     var searchQuery by remember { mutableStateOf("") }
+    val filteredPlants = remember(searchQuery, samplePlants) {
+        if (searchQuery.isBlank()) {
+            samplePlants
+        } else {
+            samplePlants.filter {
+                it.name.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("🌱 Groot Nursery") },
+                title = { Text("Welcome to Groot") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }
+        // NOTE: The floatingActionButton property has been removed.
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-            // Search bar
+            // The Search Bar UI
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
-                placeholder = { Text("Search plants...") },
-                singleLine = true
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Search for plants...") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = "Search Icon")
+                },
+                shape = RoundedCornerShape(24.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                )
             )
 
-            // Grid of plants (filtered)
+            // The grid of plants, now using the filtered list
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
-                modifier = Modifier.padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(samplePlants.filter {
-                    it.name.contains(searchQuery, ignoreCase = true)
-                }) { plant ->
+                items(filteredPlants) { plant ->
                     PlantCard(plant, onClick = { onPlantClick(plant.id) })
                 }
             }
@@ -77,18 +97,21 @@ fun HomeScreen(onPlantClick: (Int) -> Unit) {
     }
 }
 
+// The PlantCard composable is unchanged.
 @Composable
 fun PlantCard(plant: Plant, onClick: () -> Unit) {
     var isPressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f, label = "scaleAnimation"
-    )
+    val scale by animateFloatAsState(targetValue = if (isPressed) 0.95f else 1f, label = "scaleAnimation")
 
     Card(
         shape = MaterialTheme.shapes.medium,
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         modifier = Modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -106,46 +129,33 @@ fun PlantCard(plant: Plant, onClick: () -> Unit) {
                 contentDescription = plant.name,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(150.dp)
+                    .height(140.dp)
                     .clip(MaterialTheme.shapes.medium),
                 contentScale = ContentScale.Crop
             )
             Column(modifier = Modifier.padding(12.dp)) {
-                Text(plant.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    text = plant.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1
+                    text = plant.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
-                Spacer(Modifier.height(6.dp))
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "₹${plant.price}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Button(
-                        onClick = onClick,
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text("Buy")
-                    }
-                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "$${plant.price}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
 }
 
-// --- PREVIEW FUNCTION FIX ---
+// The Preview function is updated to reflect the removed parameter.
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
     GardeningNurseryTheme {
-        // We provide an empty lambda for the preview, as it doesn't need to navigate.
         HomeScreen(onPlantClick = {})
     }
 }

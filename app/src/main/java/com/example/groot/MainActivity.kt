@@ -4,14 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -20,11 +18,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+//import com.example.groot.ml.PlantIdentifierHelper
 import com.example.groot.navigation.Screen
 import com.example.groot.ui.screens.ChatBotScreen
 import com.example.groot.ui.screens.HomeScreen
 import com.example.groot.ui.screens.LoginScreen
 import com.example.groot.ui.screens.PlantDetailScreen
+import com.example.groot.ui.screens.PlantIdentifierScreen
 import com.example.groot.ui.screens.samplePlants
 import com.example.groot.ui.theme.GardeningNurseryTheme
 
@@ -33,12 +33,7 @@ class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen().apply {
-            setKeepOnScreenCondition {
-                mainViewModel.isLoggedIn.value == null
-            }
-        }
-
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         setContent {
             GardeningNurseryTheme {
@@ -48,15 +43,13 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val isLoggedIn by mainViewModel.isLoggedIn.collectAsState()
 
-                    when (isLoggedIn) {
-                        true -> MainAppScaffold()
-                        false -> LoginScreen(onLoginSuccess = {})
-                        null -> Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
+                    // Simple if/else based on the in-memory state from the ViewModel
+                    if (isLoggedIn) {
+                        MainAppScaffold()
+                    } else {
+                        LoginScreen(
+                            onLoginSuccess = { mainViewModel.onLoginSuccess() }
+                        )
                     }
                 }
             }
@@ -67,12 +60,29 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainAppScaffold() {
     val navController = rememberNavController()
-    // Make sure Home and Chat have non-null icons and titles
-    val navItems = listOf(Screen.Home, Screen.Chat).filter { it.icon != null && it.title != null }
+    val navItems = listOf(Screen.Home, Screen.Chat, Screen.Identifier).filter { it.icon != null && it.title != null }
 
     Scaffold(
         bottomBar = {
-            // ... (bottom bar code is the same) ...
+            NavigationBar {
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentDestination = navBackStackEntry?.destination
+
+                navItems.forEach { screen ->
+                    NavigationBarItem(
+                        icon = { Icon(screen.icon!!, contentDescription = screen.title) },
+                        label = { Text(screen.title!!) },
+                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        onClick = {
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                }
+            }
         }
     ) { innerPadding ->
         NavHost(
@@ -80,32 +90,30 @@ fun MainAppScaffold() {
             startDestination = Screen.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            // Updated Home route
             composable(Screen.Home.route) {
-                HomeScreen(onPlantClick = { plantId ->
-                    navController.navigate(Screen.Detail.createRoute(plantId))
-                })
+                HomeScreen(
+                    onPlantClick = { plantId ->
+                        navController.navigate(Screen.Detail.createRoute(plantId))
+                    },
+                    // Connect the chat click to the chat screen navigation
+
+                )
             }
 
             composable(Screen.Chat.route) { ChatBotScreen() }
+            composable(Screen.Identifier.route) { PlantIdentifierScreen() }
 
-            // Add the new destination for the detail screen
+
             composable(route = Screen.Detail.route) { navBackStackEntry ->
-                // Extract the plantId from the route
                 val plantId = navBackStackEntry.arguments?.getString("plantId")?.toIntOrNull()
-
-                // Find the plant from our sample data
                 val plant = samplePlants.find { it.id == plantId }
 
-                // If the plant is found, show the detail screen
                 if (plant != null) {
                     PlantDetailScreen(
                         plant = plant,
-                        onNavigateUp = { navController.navigateUp() } // Handle the back arrow click
+                        onNavigateUp = { navController.navigateUp() }
                     )
                 } else {
-                    // Optionally, show a "Not Found" screen or navigate back
-                    // For now, we'll just navigate back if the ID is invalid
                     navController.navigateUp()
                 }
             }

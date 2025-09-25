@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 //import androidx.compose.material.icons.filled.Chat // Make sure this import is not commented out
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(val route: String) {
@@ -22,6 +23,10 @@ sealed class Screen(val route: String) {
     object Chat : Screen("chat") {
         override val title: String = "Chatbot"
         override val icon: ImageVector = Icons.Default.Phone
+    }
+    object Identifier : Screen("identifier") {
+        override val title: String = "Identifier"
+        override val icon: ImageVector = Icons.Default.Send // Use an appropriate icon
     }
 
     // For the detail screen, we don't need to override title or icon,

@@ -1,23 +1,18 @@
 package com.example.groot
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import com.example.groot.data.UserPreferencesRepository
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
+class MainViewModel : ViewModel() {
 
-    private val userPreferencesRepository = UserPreferencesRepository(application)
+    // This holds the login state in memory.
+    // It starts as 'false' (logged out).
+    private val _isLoggedIn = MutableStateFlow(false)
+    val isLoggedIn = _isLoggedIn.asStateFlow()
 
-    val isLoggedIn: StateFlow<Boolean?> = userPreferencesRepository.isLoggedIn
-        .map { it }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
-        )
+    // The LoginScreen will call this function to update the state.
+    fun onLoginSuccess() {
+        _isLoggedIn.value = true
+    }
 }

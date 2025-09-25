@@ -3,6 +3,7 @@ package com.example.groot.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,20 +15,45 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay // <-- ADD THIS IMPORT
 import kotlinx.coroutines.launch
 
 data class ChatMessage(val text: String, val isFromUser: Boolean)
 
+val quickReplies = listOf("Our Hours", "Delivery Info", "Beginner Plants")
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatBotScreen() {
-    var messageText by remember { mutableStateOf("") }
     val messages = remember { mutableStateListOf<ChatMessage>() }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
+    var showQuickReplies by remember { mutableStateOf(true) }
+
+    val sendMessage = { text: String ->
+        if (text.isNotBlank()) {
+            messages.add(ChatMessage(text, true))
+            val botResponse = getBotResponse(text)
+            messages.add(ChatMessage(botResponse, false))
+            showQuickReplies = false // Hide buttons immediately after sending
+            coroutineScope.launch {
+                // Scroll to the newest message
+                listState.animateScrollToItem(messages.size - 1)
+
+                // --- THE FIX IS HERE ---
+                // Wait for a moment to make it feel natural before showing options again
+                delay(800L) // 800 milliseconds delay
+
+                // Show the quick replies again
+                showQuickReplies = true
+                // --- END OF FIX ---
+            }
+        }
+    }
+
     if (messages.isEmpty()) {
-        messages.add(ChatMessage("Hello! I'm Gardenia's virtual assistant. Ask me about hours, delivery, or beginner plants!", false))
+        messages.add(ChatMessage("Hello! I'm Groot's virtual assistant. Ask me a question or use one of the quick replies below!", false))
     }
 
     Scaffold(
@@ -41,16 +67,16 @@ fun ChatBotScreen() {
             )
         },
         bottomBar = {
-            MessageInput(
-                onSendClicked = { text ->
-                    messages.add(ChatMessage(text, true))
-                    val botResponse = getBotResponse(text)
-                    messages.add(ChatMessage(botResponse, false))
-                    coroutineScope.launch {
-                        listState.animateScrollToItem(messages.size - 1)
-                    }
+            Column {
+                if (showQuickReplies) {
+                    QuickReplyButtons(onReplyClicked = { replyText ->
+                        sendMessage(replyText)
+                    })
                 }
-            )
+                MessageInput(onSendClicked = { text ->
+                    sendMessage(text)
+                })
+            }
         }
     ) { paddingValues ->
         LazyColumn(
@@ -64,6 +90,30 @@ fun ChatBotScreen() {
         ) {
             items(messages) { msg ->
                 ChatBubble(message = msg)
+            }
+        }
+    }
+}
+
+// --- NEW COMPOSABLE: For the row of quick reply buttons ---
+@Composable
+fun QuickReplyButtons(onReplyClicked: (String) -> Unit) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(quickReplies) { reply ->
+            Button(
+                onClick = { onReplyClicked(reply) },
+                shape = RoundedCornerShape(20.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(reply)
             }
         }
     }

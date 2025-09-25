@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.groot" />
+                  <option name="mobileSdkAppId" value="1:796720189552:android:e7498f28aed946f467e4b5" />
+                  <option name="projectId" value="groot-nursery-app" />
+                  <option name="projectNumber" value="796720189552" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
