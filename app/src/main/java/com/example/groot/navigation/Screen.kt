@@ -1,16 +1,17 @@
-// File: app/src/main/java/com/example/groot/navigation/Screen.kt
-
 package com.example.groot.navigation
 
 import androidx.compose.material.icons.Icons
-//import androidx.compose.material.icons.filled.Chat // Make sure this import is not commented out
+import androidx.compose.material.icons.filled.Call
+
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Person
+
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(val route: String) {
-    // These are the properties that child objects can override.
+    // Properties for items that will appear in the bottom navigation bar
     open val title: String? = null
     open val icon: ImageVector? = null
 
@@ -20,18 +21,32 @@ sealed class Screen(val route: String) {
         override val icon: ImageVector = Icons.Default.Home
     }
 
-    object Chat : Screen("chat") {
-        override val title: String = "Chatbot"
-        override val icon: ImageVector = Icons.Default.Phone
-    }
     object Identifier : Screen("identifier") {
         override val title: String = "Identifier"
-        override val icon: ImageVector = Icons.Default.Send // Use an appropriate icon
+        override val icon: ImageVector = Icons.Default.Search
     }
 
-    // For the detail screen, we don't need to override title or icon,
-    // as they will correctly be null by default from the parent class.
+    object Chat : Screen("chat") {
+        override val title: String = "Chatbot"
+        override val icon: ImageVector = Icons.Default.Call
+    }
+
+    // The new Cart screen, which is also a bottom bar item
+    object Cart : Screen("cart") {
+        override val title: String = "Cart"
+        override val icon: ImageVector = Icons.Default.ShoppingCart
+    }
+    // ... inside sealed class Screen
+    object Assistant : Screen("assistant") {
+        override val title: String = "Assistant"
+        // Let's use a more fitting icon
+        override val icon: ImageVector = Icons.Default.Person // Or Spa, Grass, Eco...
+    }
+
+    // For the detail screen, we don't need a title or icon for the bottom bar.
+    // This is a destination we navigate to *from* other screens.
     object Detail : Screen("detail/{plantId}") {
-        fun createRoute(plantId: Int) = "detail/$plantId"
+        // Helper function to build the route with the actual plant ID
+        fun createRoute(plantId: String) = "detail/$plantId"
     }
 }

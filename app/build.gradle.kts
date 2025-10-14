@@ -12,6 +12,7 @@ android {
 
     buildFeatures {
         buildConfig = true // This is needed to access the API key
+
     }
 
     defaultConfig {
@@ -22,6 +23,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
     }
 
     buildTypes {
@@ -64,15 +66,24 @@ dependencies {
     implementation(libs.androidx.navigation.common.android)
     implementation(libs.androidx.navigation.compose.android)
     implementation(libs.androidx.datastore.core.android)
-    implementation(libs.generativeai)
+
     implementation(libs.androidx.datastore.preferences.core.android)
     testImplementation(libs.junit)
+        // ... other dependencies
     // Core TensorFlow Lite runtime
     implementation(libs.tensorflow.lite)
+    implementation("com.airbnb.android:lottie-compose:6.3.0")
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    // For using delay() in the ViewModel
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    implementation("com.google.firebase:firebase-firestore-ktx")
 
 // Optional: support library (for TensorImage, TensorBuffer, etc.)
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
     implementation ("org.tensorflow:tensorflow-lite-select-tf-ops:2.14.0")
+    implementation(platform("com.google.firebase:firebase-bom:32.8.1"))
+    implementation(libs.google.firebase.auth.ktx)
 
 // Task library (ImageClassifier, ObjectDetector, etc.)
     implementation("org.tensorflow:tensorflow-lite-task-vision:0.4.4")

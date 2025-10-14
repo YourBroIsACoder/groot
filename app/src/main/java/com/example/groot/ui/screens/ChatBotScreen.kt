@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay // <-- ADD THIS IMPORT
 import kotlinx.coroutines.launch
 
-data class ChatMessage(val text: String, val isFromUser: Boolean)
+//data class ChatMessage(val text: String, val isFromUser: Boolean)
 
 val quickReplies = listOf("Our Hours", "Delivery Info", "Beginner Plants")
 
@@ -119,22 +119,22 @@ fun QuickReplyButtons(onReplyClicked: (String) -> Unit) {
     }
 }
 
-@Composable
-fun ChatBubble(message: ChatMessage) {
-    val bubbleColor = if (message.isFromUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
-    val alignment = if (message.isFromUser) Alignment.CenterEnd else Alignment.CenterStart
+//@Composable
+//fun ChatBubble(message: ChatMessage) {
+  //  val bubbleColor = if (message.isFromUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
+    //val alignment = if (message.isFromUser) Alignment.CenterEnd else Alignment.CenterStart
 
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = message.text,
-            modifier = Modifier
-                .align(alignment)
-                .clip(RoundedCornerShape(12.dp))
-                .background(bubbleColor)
-                .padding(12.dp)
-        )
-    }
-}
+    //Box(modifier = Modifier.fillMaxWidth()) {
+      //  Text(
+        //    text = message.text,
+          //  modifier = Modifier
+            //    .align(alignment)
+              //  .clip(RoundedCornerShape(12.dp))
+                //.background(bubbleColor)
+                 //.padding(12.dp)
+        //)
+    //}
+//}
 
 @Composable
 fun MessageInput(onSendClicked: (String) -> Unit) {

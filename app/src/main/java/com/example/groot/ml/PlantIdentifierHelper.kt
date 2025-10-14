@@ -2,97 +2,113 @@ package com.example.groot.ml
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log // <-- MAKE SURE THIS IMPORT IS HERE
+import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
+import org.tensorflow.lite.support.common.FileUtil
+import org.tensorflow.lite.support.common.ops.NormalizeOp
+import org.tensorflow.lite.support.image.ImageProcessor
+import org.tensorflow.lite.support.image.TensorImage
+import org.tensorflow.lite.support.image.ops.ResizeOp
+import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
+import java.io.IOException
 import java.nio.MappedByteBuffer
-import java.nio.channels.FileChannel
+
+// --- ADD A TAG FOR OUR LOGS ---
+private const val TAG = "PlantIdentifierHelper"
 
 class PlantIdentifierHelper(
     private val context: Context,
     private val onResult: (String) -> Unit
 ) {
+    private val confidenceThreshold = 0.60f
+    private val labels: List<String>
     private var interpreter: Interpreter? = null
-    private val inputSize = 128 // match model input (128x128)
+
+    private val modelInputWidth = 224
+    private val modelInputHeight = 224
 
     init {
-        loadModel()
-    }
+        labels = try {
+            val labelList = context.assets.open("labels.txt").bufferedReader().useLines { it.toList() }
+            Log.d(TAG, "Labels loaded successfully. Found ${labelList.size} labels.") // LOG 1
+            labelList
+        } catch (e: IOException) {
+            Log.e(TAG, "Error reading labels.txt", e)
+            onResult("Error: Could not read labels file.")
+            emptyList()
+        }
 
-    private fun loadModel() {
         try {
-            val assetFileDescriptor = context.assets.openFd("plant_model_compatible.tflite")
-            val fileInputStream = assetFileDescriptor.createInputStream()
-            val fileChannel = fileInputStream.channel
-            val startOffset = assetFileDescriptor.startOffset
-            val declaredLength = assetFileDescriptor.declaredLength
-            val modelBuffer: MappedByteBuffer =
-                fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
-
-            interpreter = Interpreter(modelBuffer)
+            val model: MappedByteBuffer = FileUtil.loadMappedFile(context, "plant_model_final.tflite")
+            val options = Interpreter.Options().apply { setNumThreads(4) }
+            interpreter = Interpreter(model, options)
+            Log.d(TAG, "TFLite Interpreter initialized successfully.") // LOG 2
         } catch (e: Exception) {
-            onResult("Error loading model: ${e.message}")
+            Log.e(TAG, "Error initializing TFLite Interpreter.", e)
+            onResult("Error: Could not load the ML model.")
         }
     }
 
-    // Convert Bitmap → ByteBuffer (normalized floats)
-    // Convert Bitmap → ByteBuffer (normalized floats)
-    private fun bitmapToByteBuffer(bitmap: Bitmap): ByteBuffer {
-        val byteBuffer =
-            ByteBuffer.allocateDirect(4 * inputSize * inputSize * 3) // float32 = 4 bytes
-        byteBuffer.order(ByteOrder.nativeOrder())
-
-        // Ensure bitmap is mutable & ARGB_8888
-        val safeBitmap = if (bitmap.config != Bitmap.Config.ARGB_8888) {
-            bitmap.copy(Bitmap.Config.ARGB_8888, true)
-        } else {
-            bitmap
-        }
-
-        val scaledBitmap = Bitmap.createScaledBitmap(safeBitmap, inputSize, inputSize, true)
-        val intValues = IntArray(inputSize * inputSize)
-        scaledBitmap.getPixels(intValues, 0, scaledBitmap.width, 0, 0,
-            scaledBitmap.width, scaledBitmap.height)
-
-        var pixel = 0
-        for (i in 0 until inputSize) {
-            for (j in 0 until inputSize) {
-                val value = intValues[pixel++]
-
-                // Normalize to [0,1]
-                val r = ((value shr 16) and 0xFF) / 255.0f
-                val g = ((value shr 8) and 0xFF) / 255.0f
-                val b = (value and 0xFF) / 255.0f
-
-                byteBuffer.putFloat(r)
-                byteBuffer.putFloat(g)
-                byteBuffer.putFloat(b)
-            }
-        }
-
-        return byteBuffer
-    }
-
-
-    fun classify(input: Bitmap) {
-        if (interpreter == null) {
-            onResult("Interpreter not initialized.")
+    fun classify(bitmap: Bitmap) {
+        if (interpreter == null || labels.isEmpty()) {
+            Log.e(TAG, "Classifier not initialized, aborting classification.") // LOG 3
+            onResult("Classifier not initialized. Please restart the app.")
             return
         }
 
+        Log.d(TAG, "Starting classification for bitmap: ${bitmap.width}x${bitmap.height}") // LOG 4
+
+        // 1. Resize and Normalize the input image
+        val imageProcessor = ImageProcessor.Builder()
+            .add(ResizeOp(modelInputHeight, modelInputWidth, ResizeOp.ResizeMethod.BILINEAR))
+            .add(NormalizeOp(127.5f, 127.5f))
+            .build()
+
+        var tensorImage = TensorImage(DataType.FLOAT32)
+        tensorImage.load(bitmap)
+        tensorImage = imageProcessor.process(tensorImage)
+        Log.d(TAG, "Image processed to ${tensorImage.width}x${tensorImage.height}") // LOG 5
+
+        // 2. Prepare the output buffer
+        val outputBuffer = TensorBuffer.createFixedSize(intArrayOf(1, labels.size), DataType.FLOAT32)
+
+        // 3. Run inference
         try {
-            val inputBuffer = bitmapToByteBuffer(input)
-            val outputBuffer = Array(1) { FloatArray(30) } // 30 classes
-
-            interpreter!!.run(inputBuffer, outputBuffer)
-
-            val (maxIdx, maxScore) = outputBuffer[0]
-                .withIndex()
-                .maxByOrNull { it.value }!!
-
-            onResult("Predicted class $maxIdx (confidence ${(maxScore * 100).toInt()}%)")
+            interpreter?.run(tensorImage.buffer, outputBuffer.buffer.rewind())
         } catch (e: Exception) {
-            onResult("Error during classification: ${e.message}")
+            Log.e(TAG, "Error running model inference.", e)
+            onResult("Error processing image.")
+            return
         }
+
+        // 4. Process the output
+        val outputArray = outputBuffer.floatArray
+        // --- THIS IS THE MOST IMPORTANT LOG ---
+        Log.d(TAG, "Raw output array (first 5 values): ${outputArray.take(5).joinToString()}") // LOG 6
+
+        var maxIndex = -1
+        var maxConfidence = 0f
+        outputArray.forEachIndexed { index, confidence ->
+            if (confidence > maxConfidence) {
+                maxConfidence = confidence
+                maxIndex = index
+            }
+        }
+
+        Log.d(TAG, "Highest confidence is $maxConfidence at index $maxIndex") // LOG 7
+
+        if (maxConfidence < confidenceThreshold) {
+            Log.d(TAG, "Confidence ($maxConfidence) is below threshold ($confidenceThreshold). Rejecting.") // LOG 8
+            onResult("Could not confidently identify this plant.\n\nPlease try with a clearer image.")
+            return
+        }
+
+        val plantName = labels.getOrElse(maxIndex) { "Unknown Class ($maxIndex)" }
+
+        Log.d(TAG, "Final Result: $plantName with confidence $maxConfidence") // LOG 9
+
+        val resultText = "I think this is a... \n${plantName.replaceFirstChar { it.titlecase() }}\n(Confidence: ${"%.1f".format(maxConfidence * 100)}%)"
+        onResult(resultText)
     }
 }

@@ -4,28 +4,24 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
-//import com.example.groot.ml.PlantIdentifierHelper
+import androidx.navigation.compose.*
 import com.example.groot.navigation.Screen
-import com.example.groot.ui.screens.ChatBotScreen
-import com.example.groot.ui.screens.HomeScreen
-import com.example.groot.ui.screens.LoginScreen
-import com.example.groot.ui.screens.PlantDetailScreen
-import com.example.groot.ui.screens.PlantIdentifierScreen
-import com.example.groot.ui.screens.samplePlants
+import com.example.groot.ui.screens.*
 import com.example.groot.ui.theme.GardeningNurseryTheme
 
 class MainActivity : ComponentActivity() {
@@ -33,7 +29,12 @@ class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        installSplashScreen().apply {
+            setKeepOnScreenCondition {
+                mainViewModel.isLoggedIn.value == null
+            }
+        }
+
         super.onCreate(savedInstanceState)
         setContent {
             GardeningNurseryTheme {
@@ -43,13 +44,17 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val isLoggedIn by mainViewModel.isLoggedIn.collectAsState()
 
-                    // Simple if/else based on the in-memory state from the ViewModel
-                    if (isLoggedIn) {
-                        MainAppScaffold()
-                    } else {
-                        LoginScreen(
-                            onLoginSuccess = { mainViewModel.onLoginSuccess() }
-                        )
+                    when (isLoggedIn) {
+                        true -> MainAppScaffold()
+                        false -> LoginScreen()
+                        null -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
                     }
                 }
             }
@@ -57,10 +62,19 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppScaffold() {
     val navController = rememberNavController()
-    val navItems = listOf(Screen.Home, Screen.Chat, Screen.Identifier).filter { it.icon != null && it.title != null }
+
+    // --- CART VIEWMODEL INTEGRATION ---
+    // Get an instance of the CartViewModel. It will be shared across all screens
+    // that are part of this NavHost, keeping the cart state intact.
+    val cartViewModel: CartViewModel = viewModel()
+    val cartItems by cartViewModel.cartItems.collectAsState()
+
+    // Add the new Cart screen to the list of bottom navigation bar items
+    val navItems = listOf(Screen.Home, Screen.Assistant, Screen.Chat, Screen.Cart)
 
     Scaffold(
         bottomBar = {
@@ -70,7 +84,20 @@ fun MainAppScaffold() {
 
                 navItems.forEach { screen ->
                     NavigationBarItem(
-                        icon = { Icon(screen.icon!!, contentDescription = screen.title) },
+                        icon = {
+                            // Use a BadgedBox to show the number of items in the cart
+                            if (screen.route == Screen.Cart.route) {
+                                BadgedBox(badge = {
+                                    if (cartItems.isNotEmpty()) {
+                                        Badge { Text("${cartItems.size}") }
+                                    }
+                                }) {
+                                    Icon(screen.icon!!, contentDescription = screen.title)
+                                }
+                            } else {
+                                Icon(screen.icon!!, contentDescription = screen.title)
+                            }
+                        },
                         label = { Text(screen.title!!) },
                         selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                         onClick = {
@@ -83,7 +110,7 @@ fun MainAppScaffold() {
                     )
                 }
             }
-        }
+        },
     ) { innerPadding ->
         NavHost(
             navController = navController,
@@ -95,28 +122,33 @@ fun MainAppScaffold() {
                     onPlantClick = { plantId ->
                         navController.navigate(Screen.Detail.createRoute(plantId))
                     },
-                    // Connect the chat click to the chat screen navigation
-
+                    onChatClick = {
+                        navController.navigate(Screen.Chat.route)
+                    }
+                )
+            }
+            composable(Screen.Assistant.route) {
+                AssistantScreen()
+            }
+            composable(Screen.Cart.route) {
+                CartScreen(
+                    cartViewModel = cartViewModel,
+                    onNavigateToHome = {
+                        navController.navigate(Screen.Home.route) {
+                            // Clear the back stack so the user can't go back to the cart after ordering
+                            popUpTo(Screen.Home.route) { inclusive = true }
+                        }
+                    }
                 )
             }
 
             composable(Screen.Chat.route) { ChatBotScreen() }
-            composable(Screen.Identifier.route) { PlantIdentifierScreen() }
-
 
             composable(route = Screen.Detail.route) { navBackStackEntry ->
-                val plantId = navBackStackEntry.arguments?.getString("plantId")?.toIntOrNull()
-                val plant = samplePlants.find { it.id == plantId }
-
-                if (plant != null) {
+                val plantId = navBackStackEntry.arguments?.getString("plantId")
+                if (plantId != null) {
                     PlantDetailScreen(
-                        plant = plant,
+                        plantId = plantId,
+                        cartViewModel = cartViewModel, // Pass the shared ViewModel
                         onNavigateUp = { navController.navigateUp() }
-                    )
-                } else {
-                    navController.navigateUp()
-                }
-            }
-        }
-    }
-}
+                    )}}}}}
