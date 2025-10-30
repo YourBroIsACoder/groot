@@ -1,16 +1,19 @@
 package com.example.groot
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -19,25 +22,45 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.*
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.example.groot.navigation.Screen
 import com.example.groot.ui.screens.*
 import com.example.groot.ui.theme.GardeningNurseryTheme
+import com.example.groot.utils.NotificationHelper // <-- IMPORT YOUR HELPER
 
 class MainActivity : ComponentActivity() {
 
     private val mainViewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        // --- 1. CREATE NOTIFICATION CHANNEL ---
+        NotificationHelper.createNotificationChannel(this)
+
         installSplashScreen().apply {
             setKeepOnScreenCondition {
                 mainViewModel.isLoggedIn.value == null
             }
         }
 
-        super.onCreate(savedInstanceState)
         setContent {
             GardeningNurseryTheme {
+
+                // --- 2. REQUEST NOTIFICATION PERMISSION ---
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    val permissionLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.RequestPermission(),
+                        onResult = { isGranted -> /* You can handle denial here if you want */ }
+                    )
+                    LaunchedEffect(Unit) {
+                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
+
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -66,15 +89,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainAppScaffold() {
     val navController = rememberNavController()
-
-    // --- CART VIEWMODEL INTEGRATION ---
-    // Get an instance of the CartViewModel. It will be shared across all screens
-    // that are part of this NavHost, keeping the cart state intact.
     val cartViewModel: CartViewModel = viewModel()
     val cartItems by cartViewModel.cartItems.collectAsState()
 
-    // Add the new Cart screen to the list of bottom navigation bar items
-    val navItems = listOf(Screen.Home, Screen.Assistant, Screen.Chat, Screen.Cart)
+    // I noticed you had both Assistant and Chat. Let's assume you want Assistant.
+    // If you still have both, just add Screen.Chat back to this list.
+    val navItems = listOf(Screen.Home, Screen.Assistant, Screen.Cart,Screen.Chat)
 
     Scaffold(
         bottomBar = {
@@ -85,7 +105,6 @@ fun MainAppScaffold() {
                 navItems.forEach { screen ->
                     NavigationBarItem(
                         icon = {
-                            // Use a BadgedBox to show the number of items in the cart
                             if (screen.route == Screen.Cart.route) {
                                 BadgedBox(badge = {
                                     if (cartItems.isNotEmpty()) {
@@ -122,8 +141,9 @@ fun MainAppScaffold() {
                     onPlantClick = { plantId ->
                         navController.navigate(Screen.Detail.createRoute(plantId))
                     },
+                    // Assuming you want the FAB to go to the new Assistant, not the old Chat
                     onChatClick = {
-                        navController.navigate(Screen.Chat.route)
+                        navController.navigate(Screen.Assistant.route)
                     }
                 )
             }
@@ -135,20 +155,22 @@ fun MainAppScaffold() {
                     cartViewModel = cartViewModel,
                     onNavigateToHome = {
                         navController.navigate(Screen.Home.route) {
-                            // Clear the back stack so the user can't go back to the cart after ordering
                             popUpTo(Screen.Home.route) { inclusive = true }
                         }
                     }
                 )
             }
 
-            composable(Screen.Chat.route) { ChatBotScreen() }
-
             composable(route = Screen.Detail.route) { navBackStackEntry ->
                 val plantId = navBackStackEntry.arguments?.getString("plantId")
                 if (plantId != null) {
                     PlantDetailScreen(
                         plantId = plantId,
-                        cartViewModel = cartViewModel, // Pass the shared ViewModel
+                        cartViewModel = cartViewModel,
                         onNavigateUp = { navController.navigateUp() }
-                    )}}}}}
+                    )
+                }
+            }
+        }
+    }
+}

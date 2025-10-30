@@ -84,11 +84,13 @@ dependencies {
     implementation ("org.tensorflow:tensorflow-lite-select-tf-ops:2.14.0")
     implementation(platform("com.google.firebase:firebase-bom:32.8.1"))
     implementation(libs.google.firebase.auth.ktx)
+    implementation("com.google.firebase:firebase-functions-ktx")
 
 // Task library (ImageClassifier, ObjectDetector, etc.)
     implementation("org.tensorflow:tensorflow-lite-task-vision:0.4.4")
 
-
+    implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("com.google.firebase:firebase-analytics-ktx")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
